@@ -256,7 +256,7 @@ void DstarD0TTree::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 
 			if(trk1->charge() == trk2->charge()) continue;
 
-			//Reconstruindo D0 momentum
+			//D0 momentum Reconstruction
 			math::XYZVector D0fromDstar_p = trk1->track().momentum() + trk2->track().momentum();
 
 			if(sqrt(D0fromDstar_p.perp2()) < 3.) continue; //perp2->transverse component squared
@@ -273,151 +273,134 @@ void DstarD0TTree::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 	   
 				TransientTrack *K=0,*pi=0;
 
-	//COMBINACOES CORRETAS DE CARGAS
+				//Right Combination Charges
+				if(trk1->charge() == trkS->charge())
+				{
+		  			K = trk2;
+					pi = trk1;
+				}
+				else
+				{
+		  			K = trk1;
+		 			pi = trk2;
+				}		
+
+				//Combinações erradas dcarga - background
+				/*
 				if(trk1->charge() == trkS->charge()){
-		  		K = trk2;
-				pi = trk1;
-					}
-				else{
+		  		pi = trk2;
 		  		K = trk1;
-		 		pi = trk2;
-					}		
-
-		//Combinações erradas dcarga - background
-	/*
-		if(trk1->charge() == trkS->charge()){
-		  pi = trk2;
-		  K = trk1;
-		}
-		else{
-		  pi = trk1;
-		  K = trk2;
-		}
-	*/
-		math::XYZTLorentzVector ip4_K(K->track().px(),K->track().py(),K->track().pz(),sqrt(pow(K->track().p(),2)+pow(k_mass,2)));
-		math::XYZTLorentzVector ip4_pi(pi->track().px(),pi->track().py(),pi->track().pz(),sqrt(pow(pi->track().p(),2)+pow(pi_mass,2)));        
-
-		math::XYZTLorentzVector ip4_D0 = ip4_K + ip4_pi;
+				}
+				else{
+		  		pi = trk1;
+		  		K = trk2;
+				}
+				*/
+				//D0 4-momentum Reconstruction
+				math::XYZTLorentzVector ip4_K(K->track().px(),K->track().py(),K->track().pz(),sqrt(pow(K->track().p(),2)+pow(k_mass,2)));
+				math::XYZTLorentzVector ip4_pi(pi->track().px(),pi->track().py(),pi->track().pz(),sqrt(pow(pi->track().p(),2)+pow(pi_mass,2)));        
+				math::XYZTLorentzVector ip4_D0 = ip4_K + ip4_pi;
 		
-		if( fabs(ip4_D0.M()-1.86484)  > 1.) continue;
+				if( fabs(ip4_D0.M()-1.86484)  > 1.) continue;
 
-		math::XYZTLorentzVector p4_S(trkS->track().px(),trkS->track().py(),trkS->track().pz(),sqrt(pow(trkS->track().p(),2)+pow(pi_mass,2)));
-		math::XYZTLorentzVector ip4_DS = ip4_D0 + p4_S;
-		if((ip4_DS.M() - ip4_D0.M()) > 0.3) continue;
+				//D* 4-momentum Reconstruction
+				math::XYZTLorentzVector p4_S(trkS->track().px(),trkS->track().py(),trkS->track().pz(),sqrt(pow(trkS->track().p(),2)+pow(pi_mass,2)));
+				math::XYZTLorentzVector ip4_DS = ip4_D0 + p4_S;
+				if((ip4_DS.M() - ip4_D0.M()) > 0.3) continue;
 
-		// vertexing
+				//vertexing
+				vector<TransientTrack> tks;
+				tks.push_back(*K);
+				tks.push_back(*pi);
+				KalmanVertexFitter kalman(true);
+				TransientVertex v = kalman.vertex(tks);
+				if(!v.isValid() || !v.hasRefittedTracks()) continue;
+				double vtxProb =TMath::Prob( (Double_t) v.totalChiSquared(), (Int_t) v.degreesOfFreedom());
+				TransientTrack K_f = v.refittedTrack(*K);
+				TransientTrack pi_f = v.refittedTrack(*pi);      
 
-		vector<TransientTrack> tks;
-		tks.push_back(*K);
-		tks.push_back(*pi);
-		KalmanVertexFitter kalman(true);
-		TransientVertex v = kalman.vertex(tks);
-		if(!v.isValid() || !v.hasRefittedTracks()) continue;
-		double vtxProb =TMath::Prob( (Double_t) v.totalChiSquared(), (Int_t) v.degreesOfFreedom());
-		TransientTrack K_f = v.refittedTrack(*K);
-		TransientTrack pi_f = v.refittedTrack(*pi);      
+				//D0 from D* Siginificance
+				VertexDistanceXY vD0fromDSdXY ;
+				double D0fromDSdXY = vD0fromDSdXY.distance(RecVtx,v).value() ;
+				double D0fromDSeXY = vD0fromDSdXY.distance(RecVtx,v).error() ;
+				double D0fromDSsXY =  D0fromDSdXY / D0fromDSeXY;
 
+				math::XYZTLorentzVector p4_K(K_f.track().px(),K_f.track().py(),K_f.track().pz(),sqrt(pow(K_f.track().p(),2)+pow(k_mass,2)));
+				math::XYZTLorentzVector p4_pi(pi_f.track().px(),pi_f.track().py(),pi_f.track().pz(),sqrt(pow(pi_f.track().p(),2)+pow(pi_mass,2)));
+				math::XYZTLorentzVector d0_p4 = p4_K + p4_pi;
+				double d0mass = d0_p4.M();
 
-		//D0 from D* Siginificance
-		VertexDistanceXY vD0fromDSdXY ;
-		double D0fromDSdXY = vD0fromDSdXY.distance(RecVtx,v).value() ;
-		double D0fromDSeXY = vD0fromDSdXY.distance(RecVtx,v).error() ;
-		double D0fromDSsXY =  D0fromDSdXY / D0fromDSeXY;
-
-
-		math::XYZTLorentzVector p4_K(K_f.track().px(),K_f.track().py(),K_f.track().pz(),sqrt(pow(K_f.track().p(),2)+pow(k_mass,2)));
-		math::XYZTLorentzVector p4_pi(pi_f.track().px(),pi_f.track().py(),pi_f.track().pz(),sqrt(pow(pi_f.track().p(),2)+pow(pi_mass,2)));
-
-		math::XYZTLorentzVector d0_p4 = p4_K + p4_pi;
-		double d0mass = d0_p4.M();
-		if(fabs(d0mass - 1.86484)>0.2) continue;
-		Nd0Cand++;
+				if(fabs(d0mass - 1.86484)>0.2) continue;
+				D0Candidates++; //Number of D0 candidates
 	   
-		math::XYZTLorentzVector dS_p4 = d0_p4 + p4_S;
-		double dsmass = dS_p4.M();
-		if( (dsmass - d0mass) > 0.16) continue;
-		NdsCand++; 
-
-		//Flag
-		/*if(doMC){
-		
-        //edm::Handle<reco::GenParticle> genParticles;
-        //iEvent.getByToken("genParticlesToken_",genParticles);
-		//  edm::Handle<GenParticleCollection> genParticles;
-		//  iEvent.getByToken(genParticlesToken_,genParticles);
-        Handle<GenParticleCollection> gens;
-        iEvent.getByToken(genParticlesTokenDstar_, gens);	 
-
-		  for(size_t i=0; i<dScandsKpi.size();i++){
-		    const GenParticle & ds = gens ->at(dScandsKpi.at(i));
-		    double massDS = ds.mass();
-		    if (massDS>0) FlagMC=1;
-		  }
-		}*/
-	
+				math::XYZTLorentzVector dS_p4 = d0_p4 + p4_S;
+				double dsmass = dS_p4.M();
+				if( (dsmass - d0mass) > 0.16) continue;
+				DsCandidates++; //Number of D* candidates
 	 
-		D0_VtxProb.push_back(vtxProb);
-		D0mass.push_back(d0_p4.M());
-		Dsmass.push_back(dS_p4.M());
-		D0pt.push_back(d0_p4.Pt());
-		Dspt.push_back(dS_p4.Pt());
-		D0eta.push_back(d0_p4.eta());
-		D0phi.push_back(d0_p4.phi());
-		Dseta.push_back(dS_p4.eta());
-		Dsphi.push_back(dS_p4.phi());
+				D0_VtxProb.push_back(vtxProb);
+				D0mass.push_back(d0_p4.M());
+				Dsmass.push_back(dS_p4.M());
+				D0pt.push_back(d0_p4.Pt());
+				Dspt.push_back(dS_p4.Pt());
+				D0eta.push_back(d0_p4.eta());
+				D0phi.push_back(d0_p4.phi());
+				Dseta.push_back(dS_p4.eta());
+				Dsphi.push_back(dS_p4.phi());
 
-		D0_VtxPosx.push_back(v.position().x());
-		D0_VtxPosy.push_back(v.position().y());
-		D0_VtxPosz.push_back(v.position().z());
-		D0_Vtxerrx.push_back(v.positionError().cxx());
-		D0_Vtxerry.push_back(v.positionError().cyy());
-		D0_Vtxerrz.push_back(v.positionError().czz());
+				D0_VtxPosx.push_back(v.position().x());
+				D0_VtxPosy.push_back(v.position().y());
+				D0_VtxPosz.push_back(v.position().z());
+				D0_Vtxerrx.push_back(v.positionError().cxx());
+				D0_Vtxerry.push_back(v.positionError().cyy());
+				D0_Vtxerrz.push_back(v.positionError().czz());
 
-		TrkKdxy.push_back(K_f.track().dxy(RecVtx.position()));
-		Trkpidxy.push_back(pi_f.track().dxy(RecVtx.position()));
-		TrkSdxy.push_back(trkS->track().dxy(RecVtx.position()));
+				TrkKdxy.push_back(K_f.track().dxy(RecVtx.position()));
+				Trkpidxy.push_back(pi_f.track().dxy(RecVtx.position()));
+				TrkSdxy.push_back(trkS->track().dxy(RecVtx.position()));
 
-		TrkKdz.push_back(K_f.track().dz(RecVtx.position()));
-		Trkpidz.push_back(pi_f.track().dz(RecVtx.position()));
-		TrkSdz.push_back(trkS->track().dz(RecVtx.position()));
+				TrkKdz.push_back(K_f.track().dz(RecVtx.position()));
+				Trkpidz.push_back(pi_f.track().dz(RecVtx.position()));
+				TrkSdz.push_back(trkS->track().dz(RecVtx.position()));
 
-		TrkKnhits.push_back(K->track().numberOfValidHits());
-		Trkpinhits.push_back(pi->track().numberOfValidHits());
-		TrkSnhits.push_back(trkS->track().numberOfValidHits());
+				TrkKnhits.push_back(K->track().numberOfValidHits());
+				Trkpinhits.push_back(pi->track().numberOfValidHits());
+				TrkSnhits.push_back(trkS->track().numberOfValidHits());
 
-		TrkKchi2.push_back(K->track().normalizedChi2());
-		Trkpichi2.push_back(pi->track().normalizedChi2());
-		TrkSchi2.push_back(trkS->track().normalizedChi2());
+				TrkKchi2.push_back(K->track().normalizedChi2());
+				Trkpichi2.push_back(pi->track().normalizedChi2());
+				TrkSchi2.push_back(trkS->track().normalizedChi2());
 
-		DSDeltaR.push_back(deltaR(d0_p4.eta(),d0_p4.phi(),trkS->track().eta(),trkS->track().phi()));
+				DSDeltaR.push_back(deltaR(d0_p4.eta(),d0_p4.phi(),trkS->track().eta(),trkS->track().phi()));
 
-		TrkKpt.push_back(K_f.track().pt());
-		Trkpipt.push_back(pi_f.track().pt());
-		TrkSpt.push_back(trkS->track().pt());
+				TrkKpt.push_back(K_f.track().pt());
+				Trkpipt.push_back(pi_f.track().pt());
+				TrkSpt.push_back(trkS->track().pt());
 
-		TrkKeta.push_back(K_f.track().eta());
-		Trkpieta.push_back(pi_f.track().eta());
-		TrkSeta.push_back(trkS->track().eta());
+				TrkKeta.push_back(K_f.track().eta());
+				Trkpieta.push_back(pi_f.track().eta());
+				TrkSeta.push_back(trkS->track().eta());
 
-		TrkKphi.push_back(K_f.track().phi());
-		Trkpiphi.push_back(pi_f.track().phi());
-		TrkSphi.push_back(trkS->track().phi());
+				TrkKphi.push_back(K_f.track().phi());
+				Trkpiphi.push_back(pi_f.track().phi());
+				TrkSphi.push_back(trkS->track().phi());
 
-		TrkScharge.push_back(trkS->charge());
+				TrkScharge.push_back(trkS->charge());
 
-		D0fromDSsXY_vec.push_back(D0fromDSsXY);     
+				D0fromDSsXY_vec.push_back(D0fromDSsXY);     
 		
-		NKpiCand++;  
+				NKpiCand++;  
 
-		if(NKpiCand>999) break;
-	      }
-	      if(NKpiCand>999) break;
+				if(NKpiCand>999) break;
+	      		}
+	      	if(NKpiCand>999) break;
 	    } 
 	    if(NKpiCand>999) break;
 	  }
 }//End RecDstar
 
-	void DstarD0TTree::assignStableDaughters(const reco::Candidate* p, std::vector<int> & pids){
+//***********************************************************************************
+void DstarD0TTree::assignStableDaughters(const reco::Candidate* p, std::vector<int> & pids){
 
   	for(size_t i=0;i<p->numberOfDaughters();i++){
     if(p->daughter(i)->status()==1)
@@ -427,17 +410,17 @@ void DstarD0TTree::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
   	//cout << p->daughter(i)->pdgId() << endl;
 	}
   	return;
-	}
+}
 
-    //***********************************************************************************
-	void DstarD0TTree::GenDstarInfo(const edm::Event& iEvent,const edm::EventSetup& iSetup){
+//***********************************************************************************
+void DstarD0TTree::GenDstarInfo(const edm::Event& iEvent,const edm::EventSetup& iSetup){
   
     //MC code
   	
  	}
 	
-    //***********************************************************************************
-	void DstarD0TTree::RecD0(const edm::Event& iEvent, const edm::EventSetup& iSetup, const reco::Vertex& RecVtx){
+//***********************************************************************************
+void DstarD0TTree::RecD0(const edm::Event& iEvent, const edm::EventSetup& iSetup, const reco::Vertex& RecVtx){
 
 	using namespace edm;
 	using namespace std;
@@ -817,7 +800,7 @@ double DstarD0TTree::FindAngle(const reco::Vertex& pv , const TransientVertex& s
 void DstarD0TTree::initialize(){
 
    dScandsKpi.clear(); goodTracks.clear(); goodTracksD0.clear(); slowPiTracks.clear();
-   NKpiCand=0; Nd0Cand=0; NdsCand=0; FlagMC=0; NdsKpiMC=0; 
+   NKpiCand=0; D0Candidates=0; DsCandidates=0; FlagMC=0; NdsKpiMC=0; 
    PVx = PVy = PVz = PVerrx = PVerry = PVerrz = -999.;
    ntracksD0Kpi = -999; ntracksDstar = -999; n_pVertex = -999; runNumber=0; eventNumber=0; lumi=0; HLTPath_=0; 
    HFEnergyPlus=0.; HFEnergyMinus=0.;  lumiWeight_=0.;
@@ -885,8 +868,8 @@ MCpromptD0_DispAngle.clear(); MCpromptD0_Kt.clear();
 //***********************************************************************************
 void DstarD0TTree::beginJob(){
 
-data->Branch("Nd0Cand",&Nd0Cand,"Nd0Cand/I");
-data->Branch("NdsCand",&NdsCand,"NdsCand/I");
+data->Branch("D0Candidates",&D0Candidates,"D0Candidates/I");
+data->Branch("DsCandidates",&DsCandidates,"DsCandidates/I");
 data->Branch("NdsKpiMC",&NdsKpiMC,"NdsKpiMC/I");
 
 data->Branch("runNumber",&runNumber,"runNumber/I");
@@ -917,7 +900,7 @@ data->Branch("HLTPath_",&HLTPath_,"HLTPath_/I");
 // D0 Variables
 //======================================================
 
-data->Branch("D0Kpi_VtxProb",&D0Kpi_VtxProb);
+/*data->Branch("D0Kpi_VtxProb",&D0Kpi_VtxProb);
 data->Branch("D0Kpimass",&D0Kpimass);
 data->Branch("D0Kpipt",&D0Kpipt);
 data->Branch("D0Kpieta",&D0Kpieta);
@@ -945,7 +928,7 @@ data->Branch("TrkD0pinhits",&TrkD0pinhits);
 data->Branch("D0KpisXY",&D0KpisXY_vec);
 data->Branch("D0Kpis3D",&D0Kpis3D_vec);
 data->Branch("D0KpikT",&D0_kT_vec);
-data->Branch("D0KpiDispAngle",&D0Kpi_DispAngle);
+data->Branch("D0KpiDispAngle",&D0Kpi_DispAngle);*/
 
 //======================================================
 // D* -> D0 + pi_slow  Variables
@@ -953,13 +936,13 @@ data->Branch("D0KpiDispAngle",&D0Kpi_DispAngle);
 
 data->Branch("D0mass",&D0mass);
 data->Branch("Dsmass",&Dsmass);
-data->Branch("D0_VtxProb",&D0_VtxProb);
+/*data->Branch("D0_VtxProb",&D0_VtxProb);
 data->Branch("D0_VtxPosx",&D0_VtxPosx);
 data->Branch("D0_VtxPosy",&D0_VtxPosy);
 data->Branch("D0_VtxPosz",&D0_VtxPosz);
 data->Branch("D0_Vtxerrx",&D0_Vtxerrx);
 data->Branch("D0_Vtxerry",&D0_Vtxerry);
-data->Branch("D0_Vtxerrz",&D0_Vtxerrz);
+data->Branch("D0_Vtxerrz",&D0_Vtxerrz);*/
 data->Branch("D0eta",&D0eta);
 data->Branch("D0phi",&D0phi);
 data->Branch("Dseta",&Dseta);
@@ -976,13 +959,13 @@ data->Branch("TrkSnhits",&TrkSnhits);
 //data->Branch("TrkKchi2",&TrkKchi2);
 //data->Branch("Trkpichi2",&Trkpichi2);
 //data->Branch("TrkSchi2",&TrkSchi2);
-data->Branch("TrkKdxy",&TrkKdxy);
+/*data->Branch("TrkKdxy",&TrkKdxy);
 data->Branch("Trkpidxy",&Trkpidxy);
 data->Branch("TrkSdxy",&TrkSdxy);
 data->Branch("TrkKdz",&TrkKdz);
 data->Branch("Trkpidz",&Trkpidz);
-data->Branch("TrkSdz",&TrkSdz);
-data->Branch("TrkKeta",&TrkKeta);
+data->Branch("TrkSdz",&TrkSdz);*/ 
+data->Branch("TrkKeta",&TrkKeta);      
 data->Branch("Trkpieta",&Trkpieta);
 data->Branch("TrkSeta",&TrkSeta);
 data->Branch("TrkKphi",&TrkKphi);
@@ -992,6 +975,7 @@ data->Branch("TrkScharge",&TrkScharge);
 data->Branch("D0fromDSsXY",&D0fromDSsXY_vec);
 data->Branch("triggers",&triggers);
 
+/*
 data->Branch("MCDseta",&MCDseta);
 data->Branch("MCDsphi",&MCDsphi);
 data->Branch("MCDspt",&MCDspt);
@@ -1035,14 +1019,15 @@ data->Branch("MCpromptD0_Pienergy",&MCpromptD0_Pienergy);
 data->Branch("MCpromptD0_Pip",&MCpromptD0_Pip);
 data->Branch("MCpromptD0_Piet",&MCpromptD0_Piet);
 data->Branch("MCpromptD0_Pirapidity",&MCpromptD0_Pirapidity);
-data->Branch("MCpromptD0_Pimass",&MCpromptD0_Pimass);
+data->Branch("MCpromptD0_Pimass",&MCpromptD0_Pimass);*/
 
-data->Branch("MCpromptD0_DispAngle",&MCpromptD0_DispAngle);
-//data->Branch("MCpromptD0_Kt",&MCpromptD0_Kt);
+//data->Branch("MCpromptD0_DispAngle",&MCpromptD0_DispAngle);
+//data->Branch("MCpromptD0_Kt",&MCpromptD0_Kt); 
 
 }
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(DstarD0TTree);
+
 
 

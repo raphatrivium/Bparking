@@ -222,7 +222,7 @@ class DstarD0TTree : public edm::EDAnalyzer {
 
       int runNumber,eventNumber,lumi;
 
-      int ND0KpiCand, NKpiCand,Nd0Cand,NdsCand,NdsKpiMC,FlagMC,FlagRec,n_pVertex,ntracksD0Kpi,ntracksDstar,HLTPath_,TTBit_;   
+      int ND0KpiCand, NKpiCand,D0Candidates,DsCandidates,NdsKpiMC,FlagMC,FlagRec,n_pVertex,ntracksD0Kpi,ntracksDstar,HLTPath_,TTBit_;   
 
       double PVx,PVy,PVz,PVerrx,PVerry,PVerrz,lumiWeight_;  
       double HFEnergyMinus,HFEnergyPlus;

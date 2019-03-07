@@ -69,7 +69,7 @@ process.source = cms.Source("PoolSource",
 #'root://xrootd.unl.edu//store/mc/RunIISpring15DR74/QCD_Pt-15to7000_TuneCUETP8M1_Flat_13TeV_pythia8/GEN-SIM-RECO/AsymptNoPUbx25Reco_MCRUN2_74_V9-v3/00000/04B705C0-5407-E511-AB52-00A0D1EE8A20.root'	
 #'file:/afs/cern.ch/work/e/ealvesco/Run2015/DAnalysisTotem/CMSSW_7_6_3/src/DStarD0/DStarD0Analysis/python/001496DA-0FD4-E511-9DA9-02163E00EB62.root'
 #'file:4A06C225-70D4-E511-B2E8-D8D385AF8AEA.root'
-'file:58D0D453-BB59-E811-9F78-1866DA7F9816.root'
+'file:D661B760-2460-E811-B2A3-FA163E1D8326.root'
 	   )
 )
 #===================================================================
